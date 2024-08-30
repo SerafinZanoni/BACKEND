@@ -1,95 +1,83 @@
 import { cartModel } from "./models/cart.model.js";
-import { productModel } from "./models/product.model.js";
 
 const getAll = async () => {
-  const carts = await cartModel.find();
-  return carts;
+  const cart = await cartModel.find({ status: true });
+  return cart;
 };
-
 const getById = async (id) => {
   const cart = await cartModel.findById(id).populate("products.product");
   return cart;
 };
-
 const create = async () => {
   const cart = await cartModel.create({});
-
   return cart;
 };
-
 const update = async (id, data) => {
   const cartUpdate = await cartModel.findByIdAndUpdate(id, data, { new: true });
   return cartUpdate;
 };
-
 const deleteOne = async (id) => {
   const cart = await cartModel.deleteOne({ _id: id });
   return cart;
 };
 
-const addProductToCart = async (cid, pid) => {
-  // Método 1
-  // const productInCart = await cartModel.findOneAndUpdate({ _id: cid, "products.product": pid }, { $inc: { "products.$.quantity": 1 } });
-  // /*
-  // $inc: Este es el operador de incremento. Se utiliza para incrementar el valor de un campo numérico en la cantidad especificada.
-  // "products.$.quantity":
-  // products: es el nombre del array
-  // $:  es el operador de posición. Representa el primer elemento del array que coincide con la condición especificada
-  // en el filtro de la consulta. Básicamente, este operador selecciona el elemento correcto del array para la actualización.
-  // quantity: es el campo del objeto dentro del array products cuyo valor queremos incrementar.
-  // */
+///AGREGANDO UN PRODUCTO AL CARRITO O INCREMENTANDO SI TAL PRODUCTO EXITE
+const addProductToCart = async (id, pid) => {
+  //OBTENEMOS EL PRODUCTO POR PARAMS ID Y LO GUARDAMOS EN LA CONSTANTE PRODUCT LO MISMO CON  CART
+  ////////////////////////////////////////////////
+  ///VERIFICAMOS LA EXISTENCIA DEL PRODUCTO Y DEL CART
+  // const product = await productModel.findById(pid);
+  // if (!product) return { product: false };
+  // const cart = await cartModel.findById(id);
+  // if (!cart) return { cart: false };
+  /////////////////////////////////////////////
+  ////
+  //SI EL PRODUCTO SE ENCUETNRA EN CART SE INCREMENTA EN 1
+  const productInCart = await cartModel.findOneAndUpdate(
+    { _id: id, "products.product": pid },
+    { $inc: { "products.$.quantity": 1 } }
+  );
 
-  // if (!productInCart) {
-  //   await cartModel.updateOne({ _id: cid }, { $push: { products: { product: pid, quantity: 1 } } });
-  // }
-
-  // const cartUpdate = await cartModel.findById(cid);
-  // return cartUpdate;
-
-  // Método 2
-
-  const cart = await cartModel.findById(cid);
-
-  const productInCart = cart.products.find((element) => element.product == pid);
-  if (productInCart) {
-    productInCart.quantity++;
-  } else {
-    cart.products.push({ product: pid, quantity: 1 });
+  //SI PRODUCTO EN EL CARRO NO EXISTE SE INICIALIZA EN 1
+  if (!productInCart) {
+    await cartModel.updateOne(
+      { _id: id },
+      { $push: { products: { product: pid, quantity: 1 } } }
+    );
   }
+  const cartUpdate = await cartModel.findById(id);
 
-  await cart.save(); // Guardamos los cambios realizado en la base de datos de mongo
-  return cart;
+  return cartUpdate;
 };
 
-const deleteProductToCart = async (cid, pid) => {
-  const cart = await cartModel.findById(cid);
-
+const deletePorductToCart = async (id, pid) => {
+  const cart = await cartModel.findById(id);
   cart.products = cart.products.filter((element) => element.product != pid);
 
   await cart.save();
-
   return cart;
 };
 
-const updateQuantityProductInCart = async (cid, pid, quantity) => {
-  const cart = await cartModel.findById(cid);
-  const product = cart.products.find( element => element.product == pid);
+const updateModifyQuantity = async (id, pid, quantity) => {
+  const cart = await cartModel.findById(id);
+
+  const product = cart.products.find((element) => element.product == pid);
+
   product.quantity = quantity;
 
   await cart.save();
   return cart;
-}
+};
 
-const clearProductsToCart = async (cid) => {
+const deleteProductsTocarts = async (id) => {
+  const cart = await cartModel.findById(id);
 
-  const cart = await cartModel.findById(cid);
-  cart.products = []
+  cart.products = [];
 
-  await cart.save()
-
+  await cart.save();
   return cart;
-  
-}
+};
+
 export default {
   getAll,
   getById,
@@ -97,7 +85,7 @@ export default {
   update,
   deleteOne,
   addProductToCart,
-  deleteProductToCart,
-  updateQuantityProductInCart,
-  clearProductsToCart
+  deletePorductToCart,
+  updateModifyQuantity,
+  deleteProductsTocarts,
 };

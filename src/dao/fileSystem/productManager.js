@@ -1,76 +1,88 @@
 let products = [];
 
+import { randomUUID } from 'crypto';
 import fs from "fs";
+
 
 const pathFile = "./src/data/products.json";
 
-const addProduct = async (product) => {
-  await getProducts();
-  const { title, description, price, thumbnail, code, stock, category } = product;
-  const newProduct = {
-    id: products.length + 1,
-    title,
-    description,
-    price,
-    thumbnail: thumbnail || [],
-    code,
-    stock,
-    category,
-    status: true,
-  };
 
-  products.push(newProduct);
-
-  await fs.promises.writeFile(pathFile, JSON.stringify(products));
-
-  return product;
-};
-
-const getProducts = async (limit) => {
-  const productsJson = await fs.promises.readFile(pathFile, "utf8");
-  const productsParse = JSON.parse(productsJson);
-  products = productsParse || [];
+//FUNCION PARA AGREGAR NUEVOS PRODUCTOS
+const addProduct = async(product) =>{
+    
+    await getProducts();
+    const {title, description, code, price, stock, category, thumbnails} = product;
   
-  if (!limit) return products;
+    const newProduct = {
+        id: randomUUID(),
+        title,
+        description,
+        code,
+        price,
+        status: true,
+        stock,
+        category,
+        thumbnails: thumbnails || []
+    };
+    
+    products.push( newProduct);
+    await fs.promises.writeFile(pathFile, JSON.stringify(products));
+        
+        
+    return product;
+}
 
-  return products.slice(0, limit);
-};
+////FUNCION PARA VER LOS PRODUCTOS AGREGADOS
+const getProducts = async(limit) => {
+    const productList = await fs.promises.readFile(pathFile, "utf-8");
+    const productParse = JSON.parse(productList);
+    
+    products = productParse || [];
 
+    if (!limit) return products;
+    return products.slice(0, limit)
+}
+
+////VER PRODUCTOS POR ID
 const getProductById = async (id) => {
-  products = await getProducts();
-  const product = products.find((p) => p.id === id);
+    
+    products = await getProducts();
+    const product = products.find((p) => p.id === id);
 
-  return product;
-};
+    return product;
+}
+/// FUNCION PARA EDITAR PRODUCTOSEXISTENTES
+const putProduct = async(id, productBody) =>{
 
-const updateProduct = async (id, productData) => {
-  await getProducts();
+    await getProducts();
 
-  const index = products.findIndex((p) => p.id === id);
-  products[index] = {
-    ...products[index],
-    ...productData,
-  };
+    const productIndex = products.findIndex( product => product.id === id);
+        products[productIndex] ={
+            ...products[productIndex], ///copia del objeto
+            ...productBody //sobreescritura
+        }
+    await fs.promises.writeFile(pathFile,JSON.stringify(products));
+    const product = await getProductById(id);
+    return product;
+}
 
-  await fs.promises.writeFile(pathFile, JSON.stringify(products));
-  const product = await getProductById(id);
-  return product;
-};
 
-const deleteProduct = async (id) => {
-  await getProducts();
-  const product = await getProductById(id);
-  if (!product) return false;
-  products = products.filter((p) => p.id !== id);
-  await fs.promises.writeFile(pathFile, JSON.stringify(products));
+///BORRAR PRODUCTOS POR ID
+const deleteProduct = async(id) =>{
+    console.log(id)
+    await getProducts();
+    const product = await getProductById(id);
+    if(!product) return false;
+    products = products.filter((product) => product.id !== id);
+    await fs.promises.writeFile(pathFile,JSON.stringify(products));
 
-  return true;
+    return true;
 };
 
 export default {
-  addProduct,
-  getProducts,
-  getProductById,
-  updateProduct,
-  deleteProduct,
-};
+    addProduct,
+    getProducts,
+    getProductById,
+    putProduct,
+    deleteProduct,
+  };

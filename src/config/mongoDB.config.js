@@ -1,11 +1,13 @@
 import mongoose from "mongoose";
-import envs from "./envs.config.js";
+import envs from "./envs.config.js"
+
 
 export const connectMongoDB = async () => {
-  try {
-    mongoose.connect(envs.MONGO_URL);
-    console.log("MongoDB connected");
-  } catch (error) {
-    console.log(`Error: ${error}`);
-  }
-};
+  
+    try {
+        await mongoose.connect(envs.MONGO_URL);
+        console.log("Mong DB connected");
+    } catch (error) {
+        console.log(error);
+    }
+}

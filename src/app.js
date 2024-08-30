@@ -1,52 +1,52 @@
 import express from "express";
-import routes from "./routes/index.js";
-import __dirname from "./dirname.js";
+import allRoutes from "./routes/index.js";
 import handlebars from "express-handlebars";
+import __dirname from "./dirname.js";
 import { Server } from "socket.io";
-import viewsRoutes from "./routes/views.routes.js";
 import { connectMongoDB } from "./config/mongoDB.config.js";
+import cookieParser from "cookie-parser";
 import session from "express-session";
-import envs from "./config/envs.config.js";
 import passport from "passport";
 import { initializePassport } from "./config/passport.config.js";
-import cookieParser from "cookie-parser";
+import envs from "./config/envs.config.js"
+
 
 const app = express();
 
 connectMongoDB();
 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({extended:true}));
 app.use(express.json());
-app.engine("handlebars", handlebars.engine()); // Inicia el motor del la plantilla
-app.set("views", __dirname + "/views"); // Indicamos que ruta se encuentras las vistas
-app.set("view engine", "handlebars"); // Indicamos con que motor vamos a utilizar las vistas
 app.use(express.static("public"));
+
+//COOKIES
 app.use(cookieParser());
-app.use(
-  session({
-    secret: envs.SECRET_CODE, // palabra secreta
-    resave: true, // Mantiene la session activa, si esta en false la session se cierra en un cierto tiempo
-    saveUninitialized: true, // Guarda la session
-  })
-);
+
+app.use(session({
+  secret: envs.SECRET_CODE,
+  resave: true,
+  saveUninitialized: true,
+}));
+
+app.engine("handlebars", handlebars.engine()); 
+app.set("views", __dirname + "/views"); 
+app.set("view engine", "handlebars"); 
+
 
 initializePassport();
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Rutas de la api
-app.use("/api", routes);
-
-// Ruta de las vistas
-app.use("/", viewsRoutes);
+app.use("/", allRoutes);
 
 const httpServer = app.listen(envs.PORT, () => {
-  console.log(`Server on port ${envs.PORT}`);
+    console.log(`Server on port ${envs.PORT}`);
 });
 
-// Configuramos socket
-export const io = new Server(httpServer);
+export const socketServer = new Server(httpServer);
 
-io.on("connection", (socket) => {
-  console.log("Nuevo usuario Conectado");
+socketServer.on("connection", async() => {
+  console.log("Nuevo usuario conectado");
+  const products = await productsManager.getProducts();
+  socketServer.emit("products", products)
 });

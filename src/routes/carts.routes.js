@@ -1,100 +1,56 @@
 import { Router } from "express";
-import cartDao from "../dao/mongoDB/cart.dao.js";
-import productDao from "../dao/mongoDB/product.dao.js";
+import cartsControllers from "../controllers/carts.controllers.js";
+import { verifyCartExist } from "../middlewares/verifyCartExist.middleware.js";
 import { isUserCart } from "../middlewares/isUserCart.middleware.js";
+import { passportCall } from "../middlewares/passport.middleware.js";
+import { authorization } from "../middlewares/authorization.middleware.js";
+
+
 
 const router = Router();
 
-router.post("/", async (req, res) => {
-  try {
-    const cart = await cartDao.create();
+const middlewares = [verifyCartExist,passportCall("jwt"), authorization("user"), isUserCart];
 
-    res.status(201).json({ status: "success", cart });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ status: "Erro", msg: "Error interno del servidor" });
-  }
-});
+/////FUNCION PARA AGREGAR UN CARRITO
+router.post("/",middlewares, 
+   cartsControllers.createCart
+  );
 
-router.get("/:cid", async (req, res) => {
-  try {
-    const { cid } = req.params;
-    const cart = await cartDao.getById(cid);
-    if (!cart) return res.status(404).json({ status: "Error", msg: "Carrito no encontrado" });
+//////FUNCION PARA VER CARRITO POR ID
+router.get("/:cId",
+  middlewares, 
+  cartsControllers.getCartById
+);
 
-    res.status(200).json({ status: "success", cart });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ status: "Erro", msg: "Error interno del servidor" });
-  }
-});
+////FUNCION PARA AGREGAR UN PRODUCTO AL CARRITO
+router.post(
+  "/:cId/product/:pid",
+  middlewares, 
+  cartsControllers.addProductToCart
+);
 
-router.post("/:cid/product/:pid", isUserCart, async (req, res) => {
-  try {
-    const { cid, pid } = req.params;
-    const product = await productDao.getById(pid);
-    if (!product) return res.status(404).json({ status: "Error", msg: `No se encontró el producto con el id ${pid}` });
-    const cart = await cartDao.getById(cid);
-    if (!cart) return res.status(404).json({ status: "Error", msg: `No se encontró el carrito con el id ${cid}` });
+///AQUI ELIMINAMOS UN PRODUCTO DEL CARRITO
+router.delete(
+  "/:cId/product/:pid",
+  middlewares,
+  cartsControllers.deletePorductToCart
+);
 
-    const cartUpdate = await cartDao.addProductToCart(cid, pid);
+///EN ESTE ENDPOINT REALIZAMOS LA ACTUALIZACION DEL QUNATITY
 
-    res.status(200).json({ status: "success", payload: cartUpdate });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ status: "Erro", msg: "Error interno del servidor" });
-  }
-});
+router.put(
+  "/:cId/product/:pid",
+  middlewares,
+  cartsControllers.updateModifyQuantity
+);
 
-router.delete("/:cid/product/:pid", async (req, res) => {
-  try {
-    const { cid, pid } = req.params;
-    const product = await productDao.getById(pid);
-    if (!product) return res.status(404).json({ status: "Error", msg: `No se encontró el producto con el id ${pid}` });
-    const cart = await cartDao.getById(cid);
-    if (!cart) return res.status(404).json({ status: "Error", msg: `No se encontró el carrito con el id ${cid}` });
+//EN ESTE ENDPOINT OBTENEMOS EL ID DEL CARRITO Y LLAMAMOS A
+//CART.DAO PARA  VACIAR EL CARRITO A TRAVEZ DE UN ARRAY VACIO.
+//EN CASO DE NO COINCIDIR EL ID DEL CART CON NINGUNO DE LA BASE DE DATOS SE MUESTRA EL ERROR
+router.delete("/:cId", 
+  middlewares, 
+  cartsControllers.deletePorductToCarts);
 
-    const cartUpdate = await cartDao.deleteProductToCart(cid, pid);
-
-    res.status(200).json({ status: "success", payload: cartUpdate });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ status: "Erro", msg: "Error interno del servidor" });
-  }
-});
-
-router.put("/:cid/product/:pid", async (req, res) => {
-  try {
-    const { cid, pid } = req.params;
-    const { quantity } = req.body;
-
-    const product = await productDao.getById(pid);
-    if (!product) return res.status(404).json({ status: "Error", msg: `No se encontró el producto con el id ${pid}` });
-    const cart = await cartDao.getById(cid);
-    if (!cart) return res.status(404).json({ status: "Error", msg: `No se encontró el carrito con el id ${cid}` });
-
-    const cartUpdate = await cartDao.updateQuantityProductInCart(cid, pid, Number(quantity));
-
-    res.status(200).json({ status: "success", payload: cartUpdate });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ status: "Erro", msg: "Error interno del servidor" });
-  }
-});
-
-router.delete("/:cid", async (req, res) => {
-  try {
-    const { cid } = req.params;
-    const cart = await cartDao.clearProductsToCart(cid);
-    if (!cart) return res.status(404).json({ status: "Error", msg: "Carrito no encontrado" });
-
-    res.status(200).json({ status: "success", cart });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ status: "Erro", msg: "Error interno del servidor" });
-  }
-});
-
-
+router.get("/:cId/purchase",passportCall("jwt"), authorization("user"), cartsControllers.purchaseCart);
 
 export default router;
